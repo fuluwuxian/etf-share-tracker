@@ -1,0 +1,402 @@
+{\rtf1\ansi\ansicpg936\cocoartf2639
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fnil\fcharset134 PingFangSC-Regular;\f2\fnil\fcharset0 AppleColorEmoji;
+\f3\fnil\fcharset0 LucidaGrande;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 import streamlit as st\
+import pandas as pd\
+import requests\
+from bs4 import BeautifulSoup\
+from datetime import datetime\
+import plotly.graph_objects as go\
+from plotly.subplots import make_subplots\
+import os\
+\
+st.set_page_config(page_title="ETF 
+\f1 \'d7\'dc\'b7\'dd\'b6\'ee\'cd\'b3\'bc\'c6
+\f0 ", layout="wide")\
+st.title("
+\f2 \uc0\u55357 \u56522 
+\f0  ETF 
+\f1 \'d7\'dc\'b7\'dd\'b6\'ee\'c5\'c0\'c8\'a1
+\f0  + 
+\f1 \'cd\'b3\'bc\'c6\'d0\'a1\'b3\'cc\'d0\'f2
+\f0 ")\
+st.caption("
+\f1 \'ca\'fd\'be\'dd\'c0\'b4\'d4\'b4\'a3\'ba\'c9\'cf\'ba\'a3\'d6\'a4\'c8\'af\'bd\'bb\'d2\'d7\'cb\'f9\'b9\'d9\'cd\'f8\'a3\'a8\'c3\'bf\'c8\'d5\'ca\'d5\'c5\'cc\'ba\'f3\'b8\'fc\'d0\'c2\'a3\'a9
+\f0  | 
+\f1 \'b1\'be\'b5\'d8\'b4\'e6\'b4\'a2\'a3\'ba
+\f0 etf_data.csv")\
+\
+# ================== 
+\f1 \'ca\'fd\'be\'dd\'b4\'e6\'b4\'a2
+\f0  ==================\
+DATA_FILE = "etf_data.csv"  # 
+\f1 \'bf\'c9\'d0\'de\'b8\'c4\'ce\'aa\'c6\'e4\'cb\'fb\'c2\'b7\'be\'b6\'a3\'ac\'c0\'fd\'c8\'e7
+\f0  "./data/etf_data.csv"\
+\
+if "data" not in st.session_state:\
+    if os.path.exists(DATA_FILE):\
+        st.session_state.data = pd.read_csv(DATA_FILE, parse_dates=["date"])\
+    else:\
+        st.session_state.data = pd.DataFrame(columns=["code", "name", "date", "shares"])\
+\
+if "tracked" not in st.session_state:\
+    st.session_state.tracked = st.session_state.data["code"].unique().tolist() if not st.session_state.data.empty else []\
+\
+df = st.session_state.data\
+\
+# ================== 
+\f1 \'b2\'e0\'b1\'df\'c0\'b8\'a3\'ba\'cd\'b3\'bc\'c6\'c4\'bf\'c2\'bc\'b9\'dc\'c0\'ed
+\f0  ==================\
+st.sidebar.header("
+\f2 \uc0\u55357 \u56523 
+\f0  
+\f1 \'cd\'b3\'bc\'c6\'c4\'bf\'c2\'bc
+\f0 ")\
+st.sidebar.caption("
+\f1 \'d2\'d1\'cc\'ed\'bc\'d3\'b5\'c4
+\f0  ETF
+\f1 \'a3\'a8\'d6\'a7\'b3\'d6\'c5\'fa\'c1\'bf\'a3\'a9
+\f0 ")\
+\
+# 
+\f1 \'cf\'d4\'ca\'be\'b5\'b1\'c7\'b0\'c4\'bf\'c2\'bc
+\f0 \
+if st.session_state.tracked:\
+    for code in st.session_state.tracked:\
+        name = df[df["code"] == code]["name"].iloc[-1] if len(df[df["code"] == code]) > 0 else "
+\f1 \'ce\'b4\'d6\'aa
+\f0 "\
+        col1, col2 = st.sidebar.columns([4, 1])\
+        col1.write(f"\{code\} - \{name\}")\
+        if col2.button("
+\f1 \'c9\'be\'b3\'fd
+\f0 ", key=f"del_\{code\}"):\
+            st.session_state.tracked = [c for c in st.session_state.tracked if c != code]\
+            st.rerun()\
+else:\
+    st.sidebar.info("
+\f1 \'d4\'dd\'ce\'de
+\f0  ETF
+\f1 \'a3\'ac\'b5\'e3\'bb\'f7\'cf\'c2\'b7\'bd\'cc\'ed\'bc\'d3
+\f0 ")\
+\
+# 
+\f1 \'cc\'ed\'bc\'d3
+\f0  ETF\
+with st.sidebar.expander("
+\f2 \uc0\u10133 
+\f0  
+\f1 \'cc\'ed\'bc\'d3
+\f0  ETF"):\
+    new_code = st.text_input("ETF 
+\f1 \'b4\'fa\'c2\'eb\'a3\'a8\'c8\'e7
+\f0  510050
+\f1 \'a3\'a9
+\f0 ", placeholder="510050")\
+    if st.button("
+\f1 \'cc\'ed\'bc\'d3
+\f0 "):\
+        if new_code and new_code not in st.session_state.tracked:\
+            st.session_state.tracked.append(new_code)\
+            st.success(f"
+\f1 \'d2\'d1\'cc\'ed\'bc\'d3
+\f0  \{new_code\}")\
+            st.rerun()\
+        else:\
+            st.warning("
+\f1 \'b4\'fa\'c2\'eb\'d2\'d1\'b4\'e6\'d4\'da\'bb\'f2\'ce\'aa\'bf\'d5
+\f0 ")\
+\
+# ================== 
+\f1 \'c5\'c0\'c8\'a1\'d7\'ee\'d0\'c2\'ca\'fd\'be\'dd\'a3\'a8\'c3\'bf\'c8\'d5\'ca\'d5\'c5\'cc\'ba\'f3\'d4\'cb\'d0\'d0\'a3\'a9
+\f0  ==================\
+def fetch_latest_etf_data():\
+    url = "https://www.sse.com.cn/market/funddata/volumn/etfvolumn/"\
+    headers = \{"User-Agent": "Mozilla/5.0"\}\
+    try:\
+        resp = requests.get(url, headers=headers, timeout=10)\
+        resp.encoding = "utf-8"\
+        soup = BeautifulSoup(resp.text, "html.parser")\
+        \
+        # 
+\f1 \'d7\'a2\'d2\'e2\'a3\'ba
+\f0 SSE 
+\f1 \'d2\'b3\'c3\'e6\'b1\'ed\'b8\'f1\'bf\'c9\'c4\'dc\'b6\'af\'cc\'ac\'bc\'d3\'d4\'d8\'a3\'ac\'b4\'cb\'b4\'a6\'ce\'aa\'b3\'a3\'bc\'fb\'bd\'e1\'b9\'b9\'a3\'a8\'c7\'eb
+\f0  F12 
+\f1 \'bc\'ec\'b2\'e9\'ca\'b5\'bc\'ca
+\f0  <table> 
+\f1 \'bb\'f2
+\f0  API
+\f1 \'a3\'a9
+\f0 \
+        # 
+\f1 \'c8\'e7\'b9\'fb\'d7\'a5\'b2\'bb\'b5\'bd\'a3\'ac\'bf\'c9\'d4\'da\'e4\'af\'c0\'c0\'c6\'f7
+\f0  F12 
+\f3 \uc0\u8594 
+\f0  Network 
+\f1 \'d5\'d2
+\f0  JSON 
+\f1 \'bd\'d3\'bf\'da\'cc\'e6\'bb\'bb
+\f0 \
+        table = soup.find("table")  # 
+\f1 \'bb\'f2
+\f0  soup.select_one("table.table") \
+        if not table:\
+            st.warning("
+\f1 \'b1\'ed\'b8\'f1\'ce\'b4\'d5\'d2\'b5\'bd\'a3\'a8\'d2\'b3\'c3\'e6\'bd\'e1\'b9\'b9\'bf\'c9\'c4\'dc\'b1\'e4\'bb\'af\'a3\'a9\'a3\'ac\'c7\'eb\'ca\'d6\'b6\'af\'b8\'fc\'d0\'c2\'bb\'f2\'bc\'ec\'b2\'e9\'cd\'f8\'c2\'e7
+\f0 ")\
+            return pd.DataFrame()\
+        \
+        rows = table.find_all("tr")[1:]  # 
+\f1 \'cc\'f8\'b9\'fd\'b1\'ed\'cd\'b7
+\f0 \
+        data = []\
+        today = datetime.now().date().strftime("%Y-%m-%d")\
+        \
+        for row in rows:\
+            cols = row.find_all("td")\
+            if len(cols) >= 4:\
+                date_str = cols[0].text.strip()\
+                code = cols[1].text.strip()\
+                name = cols[2].text.strip()\
+                shares_str = cols[3].text.strip().replace(",", "")\
+                try:\
+                    shares = float(shares_str)\
+                    data.append(\{"code": code, "name": name, "date": date_str, "shares": shares\})\
+                except:\
+                    pass\
+        return pd.DataFrame(data)\
+    except Exception as e:\
+        st.error(f"
+\f1 \'c5\'c0\'c8\'a1\'ca\'a7\'b0\'dc
+\f0 : \{e\}")\
+        return pd.DataFrame()\
+\
+if st.button("
+\f2 \uc0\u55357 \u56580 
+\f0  
+\f1 \'b8\'fc\'d0\'c2\'d7\'ee\'d0\'c2\'ca\'fd\'be\'dd\'a3\'a8\'cb\'f9\'d3\'d0\'d2\'d1\'cc\'ed\'bc\'d3
+\f0  ETF
+\f1 \'a3\'a9
+\f0 ", type="primary"):\
+    new_df = fetch_latest_etf_data()\
+    if not new_df.empty:\
+        # 
+\f1 \'d6\'bb\'b1\'a3\'c1\'f4\'d2\'d1\'b8\'fa\'d7\'d9\'b5\'c4
+\f0  ETF\
+        new_df = new_df[new_df["code"].isin(st.session_state.tracked)]\
+        if not new_df.empty:\
+            # 
+\f1 \'ba\'cf\'b2\'a2\'ca\'fd\'be\'dd\'a3\'a8\'c8\'a5\'d6\'d8\'a3\'a9
+\f0 \
+            df = pd.concat([df, new_df], ignore_index=True).drop_duplicates(subset=["code", "date"])\
+            st.session_state.data = df\
+            df.to_csv(DATA_FILE, index=False)\
+            st.success(f"
+\f1 \'b3\'c9\'b9\'a6\'b8\'fc\'d0\'c2
+\f0  \{len(new_df)\} 
+\f1 \'cc\'f5\'d7\'ee\'d0\'c2\'ca\'fd\'be\'dd\'a3\'a1
+\f0 ")\
+            st.rerun()\
+        else:\
+            st.info("
+\f1 \'bd\'f1\'c8\'d5\'ca\'fd\'be\'dd\'d4\'dd\'ce\'b4\'b8\'fc\'d0\'c2\'bb\'f2\'ce\'de\'c6\'a5\'c5\'e4
+\f0  ETF")\
+    else:\
+        st.info("
+\f1 \'ce\'b4\'c4\'dc\'bb\'f1\'c8\'a1\'d7\'ee\'d0\'c2\'ca\'fd\'be\'dd\'a3\'a8\'bf\'c9\'b3\'a2\'ca\'d4\'c9\'d4\'ba\'f3\'d6\'d8\'ca\'d4\'a3\'a9
+\f0 ")\
+\
+# ================== 
+\f1 \'b5\'bc\'c8\'eb
+\f0 /
+\f1 \'b5\'bc\'b3\'f6\'ca\'fd\'be\'dd
+\f0  ==================\
+col1, col2 = st.columns(2)\
+with col1:\
+    uploaded = st.file_uploader("
+\f2 \uc0\u55357 \u56549 
+\f0  
+\f1 \'b5\'bc\'c8\'eb\'c0\'fa\'ca\'b7\'ca\'fd\'be\'dd\'a3\'a8
+\f0 CSV
+\f1 \'a3\'a9
+\f0 ", type="csv")\
+    if uploaded:\
+        imported = pd.read_csv(uploaded, parse_dates=["date"])\
+        st.session_state.data = pd.concat([st.session_state.data, imported]).drop_duplicates(subset=["code", "date"])\
+        st.session_state.data.to_csv(DATA_FILE, index=False)\
+        st.success("
+\f1 \'b5\'bc\'c8\'eb\'b3\'c9\'b9\'a6\'a3\'a1
+\f0 ")\
+        st.rerun()\
+\
+with col2:\
+    if not df.empty:\
+        csv = df.to_csv(index=False).encode()\
+        st.download_button("
+\f2 \uc0\u55357 \u56548 
+\f0  
+\f1 \'b5\'bc\'b3\'f6\'c8\'ab\'b2\'bf\'ca\'fd\'be\'dd
+\f0 ", csv, "etf_data.csv", "text/csv")\
+\
+# ================== 
+\f1 \'d6\'f7\'cd\'bc\'b1\'ed\'c7\'f8\'d3\'f2
+\f0  ==================\
+st.header("
+\f2 \uc0\u55357 \u56520 
+\f0  
+\f1 \'c3\'bf\'c8\'d5\'d7\'dc\'b7\'dd\'b6\'ee\'bf\'c9\'ca\'d3\'bb\'af
+\f0 ")\
+\
+if df.empty or not st.session_state.tracked:\
+    st.info("
+\f1 \'c7\'eb\'cf\'c8\'cc\'ed\'bc\'d3
+\f0  ETF 
+\f1 \'b2\'a2\'b8\'fc\'d0\'c2\'ca\'fd\'be\'dd
+\f0 ")\
+else:\
+    # 
+\f1 \'c9\'b8\'d1\'a1\'cc\'f5\'bc\'fe
+\f0 \
+    selected_codes = st.multiselect("
+\f1 \'d1\'a1\'d4\'f1\'d2\'aa\'cf\'d4\'ca\'be\'b5\'c4
+\f0  ETF
+\f1 \'a3\'a8\'bf\'c9\'b6\'e0\'d1\'a1\'a3\'a9
+\f0 ", \
+                                  options=st.session_state.tracked, \
+                                  default=st.session_state.tracked[:3])\
+    \
+    if selected_codes:\
+        start_date = st.date_input("
+\f1 \'bf\'aa\'ca\'bc\'c8\'d5\'c6\'da
+\f0 ", value=datetime(2020, 1, 1))\
+        end_date = st.date_input("
+\f1 \'bd\'e1\'ca\'f8\'c8\'d5\'c6\'da
+\f0 ", value=datetime.today())\
+        \
+        # 
+\f1 \'b9\'fd\'c2\'cb\'ca\'fd\'be\'dd
+\f0 \
+        plot_df = df[\
+            (df["code"].isin(selected_codes)) &\
+            (df["date"] >= pd.Timestamp(start_date)) &\
+            (df["date"] <= pd.Timestamp(end_date))\
+        ].copy()\
+        \
+        if not plot_df.empty:\
+            plot_df = plot_df.sort_values(["code", "date"])\
+            \
+            # 
+\f1 \'bc\'c6\'cb\'e3
+\f0  5 
+\f1 \'cc\'ec\'d2\'c6\'b6\'af\'c6\'bd\'be\'f9
+\f0 \
+            plot_df["ma5"] = plot_df.groupby("code")["shares"].transform(lambda x: x.rolling(5, min_periods=1).mean())\
+            \
+            # 
+\f1 \'bb\'e6\'cd\'bc
+\f0 \
+            fig = make_subplots(specs=[[\{"secondary_y": True\}]])\
+            \
+            for code in selected_codes:\
+                sub = plot_df[plot_df["code"] == code]\
+                name = sub["name"].iloc[0] if not sub["name"].isna().all() else code\
+                \
+                # 
+\f1 \'d6\'f9\'d7\'b4\'cd\'bc
+\f0 \
+                fig.add_trace(\
+                    go.Bar(x=sub["date"], y=sub["shares"], name=f"\{code\} 
+\f1 \'d7\'dc\'b7\'dd\'b6\'ee
+\f0 ", marker_color="#1f77b4"),\
+                    secondary_y=False\
+                )\
+                # 5
+\f1 \'cc\'ec
+\f0 MA
+\f1 \'cf\'df
+\f0 \
+                fig.add_trace(\
+                    go.Scatter(x=sub["date"], y=sub["ma5"], name=f"\{code\} 5
+\f1 \'cc\'ec\'be\'f9\'d6\'b5
+\f0 ", line=dict(width=3, dash="solid")),\
+                    secondary_y=True\
+                )\
+            \
+            fig.update_layout(\
+                title="ETF 
+\f1 \'c3\'bf\'c8\'d5\'d7\'dc\'b7\'dd\'b6\'ee\'a3\'a8\'d6\'f9\'d7\'b4\'a3\'a9
+\f0  + 5
+\f1 \'cc\'ec\'d2\'c6\'b6\'af\'c6\'bd\'be\'f9\'cf\'df
+\f0 ",\
+                xaxis_title="
+\f1 \'c8\'d5\'c6\'da
+\f0 ",\
+                yaxis_title="
+\f1 \'d7\'dc\'b7\'dd\'b6\'ee\'a3\'a8\'cd\'f2\'b7\'dd\'a3\'a9
+\f0 ",\
+                yaxis2_title="5
+\f1 \'cc\'ec\'be\'f9\'d6\'b5
+\f0 ",\
+                barmode="group",\
+                height=600,\
+                legend=dict(orientation="h", yanchor="bottom", y=1.02),\
+                template="plotly_white"\
+            )\
+            st.plotly_chart(fig, use_container_width=True)\
+            \
+            # 
+\f1 \'d4\'ad\'ca\'bc\'ca\'fd\'be\'dd\'b1\'ed\'b8\'f1
+\f0 \
+            st.subheader("
+\f1 \'d4\'ad\'ca\'bc\'ca\'fd\'be\'dd\'d4\'a4\'c0\'c0
+\f0 ")\
+            st.dataframe(plot_df[["code", "name", "date", "shares", "ma5"]].round(2), use_container_width=True)\
+        else:\
+            st.warning("
+\f1 \'cb\'f9\'d1\'a1\'c8\'d5\'c6\'da\'b7\'b6\'ce\'a7\'c4\'da\'ce\'de\'ca\'fd\'be\'dd\'a3\'ac\'c7\'eb\'cf\'c8\'b8\'fc\'d0\'c2\'ca\'fd\'be\'dd\'bb\'f2\'b5\'bc\'c8\'eb\'c0\'fa\'ca\'b7\'bc\'c7\'c2\'bc
+\f0 ")\
+\
+st.divider()\
+st.caption("
+\f2 \uc0\u55357 \u56481 
+\f0  
+\f1 \'cc\'e1\'ca\'be\'a3\'ba
+\f0 \\n"\
+           "\'95 
+\f1 \'c0\'fa\'ca\'b7\'ca\'fd\'be\'dd\'a3\'a8
+\f0 2020
+\f1 \'c4\'ea\'c6\'f0\'a3\'a9\'bd\'a8\'d2\'e9\'cf\'c8\'d3\'c3
+\f0  Tushare
+\f1 \'a3\'a8
+\f0 etf_share_size 
+\f1 \'bd\'d3\'bf\'da\'a3\'a9\'bb\'f2
+\f0  AKShare 
+\f1 \'c5\'fa\'c1\'bf\'bb\'f1\'c8\'a1\'ba\'f3\'b5\'bc\'c8\'eb\'a1\'a3
+\f0 \\n"\
+           "\'95 
+\f1 \'b1\'be\'b3\'cc\'d0\'f2\'c3\'bf\'cc\'ec\'d4\'cb\'d0\'d0\'d2\'bb\'b4\'ce\'a1\'b8\'b8\'fc\'d0\'c2\'d7\'ee\'d0\'c2\'ca\'fd\'be\'dd\'a1\'b9\'bc\'b4\'bf\'c9\'d7\'d4\'b6\'af\'c0\'db\'bb\'fd\'d7\'ee\'d0\'c2\'b7\'dd\'b6\'ee\'a1\'a3
+\f0 \\n"\
+           "\'95 
+\f1 \'d2\'b3\'c3\'e6\'bd\'e1\'b9\'b9\'b1\'e4\'bb\'af\'ca\'b1\'a3\'ac
+\f0 fetch_latest_etf_data 
+\f1 \'ba\'af\'ca\'fd\'c0\'ef\'b5\'c4\'bd\'e2\'ce\'f6\'c6\'f7\'d0\'e8\'ce\'a2\'b5\'f7\'a3\'a8
+\f0 F12 
+\f1 \'b2\'e9\'bf\'b4\'b1\'ed\'b8\'f1\'bd\'e1\'b9\'b9\'a3\'a9\'a1\'a3
+\f0 \\n"\
+           "\'95 
+\f1 \'ca\'fd\'be\'dd\'d3\'c0\'be\'c3\'b1\'a3\'b4\'e6\'d4\'da\'b5\'b1\'c7\'b0\'c4\'bf\'c2\'bc\'b5\'c4
+\f0  etf_data.csv
+\f1 \'a3\'ac\'bf\'c9\'b8\'b4\'d6\'c6\'b1\'b8\'b7\'dd\'a1\'a3
+\f0 ")\
+\
+# 
+\f1 \'d7\'d4\'b6\'af\'b1\'a3\'b4\'e6
+\f0 \
+if not df.empty:\
+    df.to_csv(DATA_FILE, index=False)}

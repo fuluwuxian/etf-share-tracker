@@ -1,17 +1,13 @@
 import streamlit as st
 import pandas as pd
-import requests
-from bs4 import BeautifulSoup
 from datetime import datetime
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
-import re
-import random
 
 st.set_page_config(page_title="ETF 总份额统计", layout="wide")
-st.title("📊 ETF 总份额爬取 + 统计小程序")
-st.caption("数据来源：上海证券交易所官网（每日收盘后更新） | 本地存储：etf_data.csv")
+st.title("📊 ETF 总份额统计小程序")
+st.caption("数据来源：上海证券交易所官网 | 本地存储：etf_data.csv（自动保存）")
 
 # ================== 数据存储 ==================
 DATA_FILE = "etf_data.csv"
@@ -50,89 +46,20 @@ with st.sidebar.expander("➕ 添加 ETF"):
         else:
             st.warning("代码已存在或为空")
 
-# ================== 防爬虫 Headers（核心升级） ==================
-def get_random_headers():
-    user_agents = [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0",
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
-    ]
-    return {
-        "User-Agent": random.choice(user_agents),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Referer": "https://www.sse.com.cn/",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
-        "Cache-Control": "max-age=0"
-    }
-
-# ================== 爬取函数（已加入防爬虫） ==================
-def fetch_latest_etf_data():
-    url = "https://www.sse.com.cn/market/funddata/volumn/etfvolumn/"
-    session = requests.Session()
-    headers = get_random_headers()
-    
-    try:
-        resp = session.get(url, headers=headers, timeout=20)
-        resp.encoding = "utf-8"
-        text = resp.text
-
-        # 正则精准匹配逗号分隔数据（日期,代码,名称,份额）
-        pattern = r'(\d{4}-\d{2}-\d{2}),\s*(\d{6}),\s*([^,]+?),\s*([\d\.,]+)'
-        matches = re.findall(pattern, text)
-
-        if not matches:
-            st.warning("⚠️ 未匹配到数据（页面可能正在更新或结构变化）")
-            return pd.DataFrame()
-
-        data = []
-        for date_str, code, name, shares_str in matches:
-            try:
-                shares = float(shares_str.replace(',', ''))
-                data.append({
-                    "date": pd.to_datetime(date_str),
-                    "code": code.strip(),
-                    "name": name.strip(),
-                    "shares": shares
-                })
-            except:
-                continue
-
-        df_table = pd.DataFrame(data)
-        return df_table
-    except Exception as e:
-        st.error(f"爬取失败: {str(e)[:120]}")
-        return pd.DataFrame()
-
-# ================== 更新按钮 ==================
-if st.button("🔄 更新最新数据（所有已添加 ETF）", type="primary"):
-    with st.spinner("正在请求数据（已启用防爬虫机制）..."):
-        new_df = fetch_latest_etf_data()
-    if not new_df.empty:
-        new_df = new_df[new_df["code"].isin(st.session_state.tracked)]
-        if not new_df.empty:
-            df = pd.concat([df, new_df], ignore_index=True).drop_duplicates(subset=["code", "date"])
-            st.session_state.data = df
-            df.to_csv(DATA_FILE, index=False)
-            st.success(f"✅ 成功更新 {len(new_df)} 条最新数据！（最新日期：{new_df['date'].max().date()}）")
-            st.rerun()
-        else:
-            st.warning("今日数据暂未更新或无匹配 ETF")
-    else:
-        st.warning("未能抓取到数据，请稍后重试或手动导入历史数据")
+# ================== 手动获取数据提示 ==================
+st.info("🔗 **每日手动更新数据**：点击下方按钮打开官网 → 复制表格 → 保存为 CSV → 上传即可")
+if st.button("🌐 打开上海证券交易所 ETF 总份额页面"):
+    st.markdown("[https://www.sse.com.cn/market/funddata/volumn/etfvolumn/](https://www.sse.com.cn/market/funddata/volumn/etfvolumn/)", unsafe_allow_html=True)
 
 # ================== 导入导出 ==================
 col1, col2 = st.columns(2)
 with col1:
-    uploaded = st.file_uploader("📥 导入历史数据（CSV）", type="csv")
+    uploaded = st.file_uploader("📥 导入历史/最新数据（CSV）", type="csv")
     if uploaded:
         imported = pd.read_csv(uploaded, parse_dates=["date"])
         st.session_state.data = pd.concat([st.session_state.data, imported]).drop_duplicates(subset=["code", "date"])
         st.session_state.data.to_csv(DATA_FILE, index=False)
-        st.success("导入成功！")
+        st.success("✅ 导入成功！")
         st.rerun()
 
 with col2:
@@ -144,7 +71,7 @@ with col2:
 st.header("📈 每日总份额可视化")
 
 if not st.session_state.tracked:
-    st.info("请先在左侧侧边栏添加 ETF")
+    st.info("请先在左侧添加 ETF")
 else:
     selected_codes = st.multiselect("选择要显示的 ETF", 
                                   options=st.session_state.tracked, 
@@ -164,7 +91,7 @@ else:
         ].copy()
         
         if plot_df.empty:
-            st.info("📌 当前 ETF 还没有数据 → 请点击上方「更新最新数据」按钮")
+            st.info("📌 还没有数据 → 请先导入 CSV")
         else:
             plot_df = plot_df.sort_values(["code", "date"])
             plot_df["ma5"] = plot_df.groupby("code")["shares"].transform(lambda x: x.rolling(5, min_periods=1).mean())
@@ -193,6 +120,8 @@ if not df.empty:
     df.to_csv(DATA_FILE, index=False)
 
 st.divider()
-st.caption("🔒 防爬虫机制已启用：随机UA + 完整浏览器Headers + Session\n"
-           "• 每次点击「更新」都会使用不同浏览器身份\n"
-           "• 若仍失败，建议先手动导出 CSV 备份数据")
+st.caption("💡 使用说明：\n"
+           "1. 添加 ETF 代码（如 510310）\n"
+           "2. 点击上方按钮打开官网 → 全选表格 → 复制 → 粘贴到 Excel → 保存为 CSV\n"
+           "3. 上传 CSV 即可看到柱状图 + 5天均线\n"
+           "4. 数据永久保存在 etf_data.csv（建议每周导出备份）")
